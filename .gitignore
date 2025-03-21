@@ -1,0 +1,42 @@
+# Homework and assignment files
+homework/
+hw*/
+assignment*/
+take-home-quiz*/
+quiz*/
+
+# Compressed files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Document files
+*.pdf
+*.doc
+*.docx
+*.txt
+*.rtf
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.backup 
