@@ -1,4 +1,10 @@
 //  ************** REQUIRES JAVA 21 or later! (https://adoptium.net/) ************** //
+/*
+COURSE: COSC455-002
+Assignment: Program 1
+Name: Abdelmagid, Abdalla
+*/
+
 package compiler;
 
 import java.util.logging.Logger;

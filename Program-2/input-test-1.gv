@@ -1,0 +1,45 @@
+digraph ParseTree {
+graph[ranksep=1];
+node[shape=rect,style=dotted];
+
+0[label="Parse Tree",shape=plain];
+0->{1[label="<START>"]};
+1->{2[label="<SENTENCE>"]};
+2->{3[label="<NOUN_PHRASE>"]};
+3->{4[label="<ARTICLE>"]};
+4->{5[label="The",shape=oval,style=bold]};
+3->{6[label="<ADJ_LIST>"]};
+6->{7[label="<ADJECTIVE>"]};
+7->{8[label="quick",shape=oval,style=bold]};
+6->{9[label="<ADJ_TAIL>"]};
+9->{10[label="<LIST_SEPARATOR>"]};
+10->{11[label=",",shape=oval,style=bold]};
+9->{12[label="<ADJECTIVE>"]};
+12->{13[label="brown",shape=oval,style=bold]};
+9->{14[label="<ADJ_TAIL>"]};
+14->{15[label="&epsilon;",shape=plain]};
+3->{16[label="<NOUN>"]};
+16->{17[label="fox",shape=oval,style=bold]};
+2->{18[label="<VERB_PHRASE>"]};
+18->{19[label="<VERB>"]};
+19->{20[label="jumps",shape=oval,style=bold]};
+18->{21[label="<PREPOSITION>"]};
+21->{22[label="over",shape=oval,style=bold]};
+2->{23[label="<NOUN_PHRASE>"]};
+23->{24[label="<ARTICLE>"]};
+24->{25[label="the",shape=oval,style=bold]};
+23->{26[label="<ADJ_LIST>"]};
+26->{27[label="<ADJECTIVE>"]};
+27->{28[label="lazy",shape=oval,style=bold]};
+26->{29[label="<ADJ_TAIL>"]};
+29->{30[label="&epsilon;",shape=plain]};
+23->{31[label="<NOUN>"]};
+31->{32[label="dog",shape=oval,style=bold]};
+2->{33[label="<PREP_PHRASE>"]};
+33->{34[label="&epsilon;",shape=plain]};
+2->{35[label="<SENTENCE_TAIL>"]};
+35->{36[label="<PERIOD>"]};
+36->{37[label=".",shape=oval,style=bold]};
+1->{38[label="<$$>"]};
+38->{39[label="$$ (End of Input)",shape=oval,style=bold]};
+}
