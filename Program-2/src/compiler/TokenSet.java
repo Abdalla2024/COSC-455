@@ -32,7 +32,15 @@ public enum TokenSet {
     LIST_SEPARATOR(","),
     ADVERB("quickly", "slowly"),
     PREPOSITION("around", "up", "over"),
-
+    READ("read"),
+    WRITE("write"),
+    VAR("var"),
+    LET("let"),
+    FUN_CALL("call"),
+    ID("id"),
+    OPEN_PAREN("("),
+    CLOSE_PAREN(")"),
+    
     PERIOD("."),
     EXCLAMATION("!"),
     CONJUNCTION("and", "or"),
