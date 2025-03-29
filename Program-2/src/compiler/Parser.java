@@ -115,13 +115,22 @@ class Parser {
     private void STMT_LIST(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<STMT_LIST>");
         
-        if (lexer.getCurrentToken() == TokenSet.IDENTIFIER) {
+        // If the current token is a statement start, parse a statement and then parse the rest of the statement list
+        if (isStmtStart(lexer.getCurrentToken())) {
             STMT(thisNode);
             STMT_LIST(thisNode);
         } else {
             EPSILON(thisNode);
         }
-        
+    }
+
+    // Boolean function to check if the current token is a statement start
+    private boolean isStmtStart(TokenSet token) {
+        return lexer.getCurrentToken() == TokenSet.READ ||
+               lexer.getCurrentToken() == TokenSet.WRITE ||
+               lexer.getCurrentToken() == TokenSet.VAR ||
+               lexer.getCurrentToken() == TokenSet.LET ||
+               lexer.getCurrentToken() == TokenSet.FUN_CALL;
     }
 
     // <STMT> ::= <READ_STMT> | <WRITE_STMT> | <VAR_DECL> | <LET_STMT | FUN_CALL>
@@ -132,9 +141,9 @@ class Parser {
             READ_STMT(thisNode);
         } else if (lexer.getCurrentToken() == TokenSet.WRITE) {
             WRITE_STMT(thisNode);
-        } else if (lexer.getCurrentToken() == TokenSet.VAR_DECL) {
+        } else if (lexer.getCurrentToken() == TokenSet.VAR) {
             VAR_DECL(thisNode);
-        } else if (lexer.getCurrentToken() == TokenSet.LET_STMT) {
+        } else if (lexer.getCurrentToken() == TokenSet.LET) {
             LET_STMT(thisNode);
         } else if (lexer.getCurrentToken() == TokenSet.FUN_CALL) {
             FUN_CALL(thisNode);
@@ -184,12 +193,201 @@ class Parser {
         MATCH(thisNode, TokenSet.CLOSE_PAREN);
     }
 
-    // <LET_TAIL> ::= <EXPRESSION> <FUNC_CALL>
+    // <LET_TAIL> ::= "=" <EXPRESSION> | "<-" <FUN_CALL>
+    private void LET_TAIL(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<LET_TAIL>");
+
+        if (lexer.getCurrentToken() == TokenSet.EQUAL) {
+            MATCH(thisNode, TokenSet.EQUAL);
+            EXPRESSION(thisNode);
+        } else {
+            MATCH(thisNode, TokenSet.ARROW);
+            FUN_CALL(thisNode);
+        }
+    }
+
+    // <ARG_LIST> ::= <EXPRESSION> <ARGS_TAIL> | ε
     private void ARG_LIST(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<ARG_LIST>");
 
+        if (isExprStart(lexer.getCurrentToken())) {
+            EXPRESSION(thisNode);
+            ARGS_TAIL(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // Boolean function to check if the current token is an expression start
+    private boolean isExprStart(TokenSet token) {
+        return token == TokenSet.ADD_OP || token == TokenSet.ID || token == TokenSet.NUMBER || token == TokenSet.OPEN_PAREN;
+    }
+
+    // <ARGS_TAIL> ::= <COMMA> <ARG_LIST> | ε
+    private void ARGS_TAIL(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<ARGS_TAIL>");
+
+        if (lexer.getCurrentToken() == TokenSet.COMMA) {
+            MATCH(thisNode, TokenSet.COMMA);
+            ARG_LIST(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <EXPRESSION> ::= <TERM> <TERM_TAIL>
+    private void EXPRESSION(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<EXPRESSION>");
+
+        TERM(thisNode);
+        TERM_TAIL(thisNode);
+    }
+
+    // <TERM> ::= <FATOR> <FACTOR_TAIL>
+    private void TERM(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<TERM>");
+
+        FACTOR(thisNode);
+        FACTOR_TAIL(thisNode);
+    }
+
+    // <TERM_TAIL> ::= <ADD_OP> <TERM> <TERM_TAIL> | ε
+    private void TERM_TAIL(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<TERM_TAIL>");
+
+        if (lexer.getCurrentToken() == TokenSet.ADD_OP) {
+            MATCH(thisNode, TokenSet.ADD_OP);
+            TERM(thisNode);
+            TERM_TAIL(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <FACTOR> ::= "-" <FACTOR> | "(" <EXPRESSION> ")" | <ID> | <NUM>
+    private void FACTOR(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FACTOR>");
+
+        if (lexer.getCurrentToken() == TokenSet.ADD_OP) {
+            MATCH(thisNode, TokenSet.ADD_OP);
+            FACTOR(thisNode);
+        } else if (lexer.getCurrentToken() == TokenSet.OPEN_PAREN) {
+            MATCH(thisNode, TokenSet.OPEN_PAREN);
+            EXPRESSION(thisNode);
+            MATCH(thisNode, TokenSet.CLOSE_PAREN);
+        } else if (lexer.getCurrentToken() == TokenSet.ID) {
+            MATCH(thisNode, TokenSet.ID);
+        } else if (lexer.getCurrentToken() == TokenSet.NUMBER) {
+            MATCH(thisNode, TokenSet.NUMBER);
+        }
+    }
+
+    // <FACTOR_TAIL> ::= <MULT_OP> <FACTOR> <FACTOR_TAIL> | ε
+    private void FACTOR_TAIL(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FACTOR_TAIL>");
+
+        if (lexer.getCurrentToken() == TokenSet.MULT_OP) {
+            MATCH(thisNode, TokenSet.MULT_OP);
+            FACTOR(thisNode);
+            FACTOR_TAIL(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <IF_STMT> ::= <IF> "(" <CONDITION> ")" "{" <STMT_LIST> "}" <ELSE_STMT>
+    private void IF_STMT(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<IF_STMT>");
+
+        MATCH(thisNode, TokenSet.IF);
+        MATCH(thisNode, TokenSet.OPEN_PAREN);
+        CONDITION(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_PAREN);
+        MATCH(thisNode, TokenSet.OPEN_BRACE);
+        STMT_LIST(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_BRACE);
+        ELSE_STMT(thisNode);
+    }
+
+    // <CONDITION> ::= <EXPRESSION> <REL_OP> <EXPRESSION>
+    private void CONDITION(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<CONDITION>");
+
         EXPRESSION(thisNode);
-        ARG_TAIL(thisNode);
+        MATCH(thisNode, TokenSet.REL_OP);
+        EXPRESSION(thisNode);
+    }
+
+    // <ELSE_STMT> ::= <ELSE> "{" <STMT_LIST> "}" | ε
+    private void ELSE_STMT(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<ELSE_STMT>");
+
+        if (lexer.getCurrentToken() == TokenSet.ELSE) {
+            MATCH(thisNode, TokenSet.ELSE);
+            MATCH(thisNode, TokenSet.OPEN_BRACE);
+            STMT_LIST(thisNode);
+            MATCH(thisNode, TokenSet.CLOSE_BRACE);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <FUNC_DEF> ::= "DEF" <ID> "(" <PARAM_LIST> ")" "{" <STMT_LIST> "RETURN" <EXPRESSION> "}"
+    private void FUNC_DEF(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FUNC_DEF>");
+
+        MATCH(thisNode, TokenSet.DEF);
+        MATCH(thisNode, TokenSet.ID);
+        MATCH(thisNode, TokenSet.OPEN_PAREN);
+        PARAM_LIST(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_PAREN);
+        MATCH(thisNode, TokenSet.OPEN_BRACE);
+        STMT_LIST(thisNode);
+        MATCH(thisNode, TokenSet.RETURN);
+        EXPRESSION(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_BRACE);
+    }
+
+    // <PARAM_LIST> ::= <ID> <PARAM_TAIL> | ε
+    private void PARAM_LIST(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<PARAM_LIST>");
+
+        if (lexer.getCurrentToken() == TokenSet.ID) {
+            MATCH(thisNode, TokenSet.ID);
+            PARAM_TAIL(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <PARAM_TAIL> ::= <COMMA> <ID> <PARAM_TAIL> | ε
+    private void PARAM_TAIL(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<PARAM_TAIL>");
+
+        if (lexer.getCurrentToken() == TokenSet.COMMA) {
+            MATCH(thisNode, TokenSet.COMMA);
+            MATCH(thisNode, TokenSet.ID);
+            PARAM_TAIL(thisNode);
+        } else {
+            EPSILON(thisNode);
+        }
+    }
+
+    // <FOR_LOOP> ::= "FOR" "(" <VAR_DECL> ";" <CONDITION> ";" <LET_STMT> ")" "{" <STMT_LIST> "}"
+    private void FOR_LOOP(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FOR_LOOP>");
+
+        MATCH(thisNode, TokenSet.FOR);
+        MATCH(thisNode, TokenSet.OPEN_PAREN);
+        VAR_DECL(thisNode);
+        MATCH(thisNode, TokenSet.SEMICOLON);
+        CONDITION(thisNode);
+        MATCH(thisNode, TokenSet.SEMICOLON);
+        LET_STMT(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_PAREN);
+        MATCH(thisNode, TokenSet.OPEN_BRACE);
+        STMT_LIST(thisNode);
+        MATCH(thisNode, TokenSet.CLOSE_BRACE);
     }
 
     // <SENTENCE> ::= <NOUN_PHRASE> <VERB_PHRASE> <NOUN_PHRASE> <PREP_PHRASE> <SENTENCE_TAIL>
