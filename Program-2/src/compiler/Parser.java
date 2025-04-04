@@ -8,6 +8,8 @@ Name: Abdelmagid, Abdalla
 package compiler;
 
 import java.util.logging.Logger;
+import java.util.HashSet;
+import java.util.Set;
 
 /*
  Important: Understanding the relationship between the comments below (the grammar) and the code
@@ -84,23 +86,42 @@ NOTE: The ***PARSER_README.MD*** file has complete information, but here are som
               (See Textbook Section 2.3.1)
  */
 
-
 class Parser {
 
-// ///////////////////////////////////////////////////////////////////////////////////////////////////
-// !!!!!!!!!!!!!!!!!!! CODE MODIFICATIONS SHOULD BE MADE BELOW THIS LINE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // Symbol table to track declared variables and functions
+    private final Set<String> declaredVariables = new HashSet<>();
+    private final Set<String> declaredFunctions = new HashSet<>();
 
-    // <START> :== <SENTENCE> $$
-    // NOTE: The name of this method should not change unless you also change the invocation from "analyze" below.
+    // ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // !!!!!!!!!!!!!!!!!!! CODE MODIFICATIONS SHOULD BE MADE BELOW THIS LINE
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // <START> ::= <PROGRAM> | <SENTENCE> $$
     private void START(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<START>");
 
-        // Invoke the first rule.
-        SENTENCE(thisNode);
+        // Check if this is a program or a sentence
+        if (isStmtStart(lexer.getCurrentToken())) {
+            // This is a program
+            PROGRAM(thisNode);
+        } else {
+            // This is a sentence
+            SENTENCE(thisNode);
+            MATCH(thisNode, TokenSet.$$);
+        }
+    }
 
-        // Match the end of file marker.
-        MATCH(thisNode, TokenSet.$$);
+    // Boolean function to check if the current token is a statement start
+    private boolean isStmtStart(TokenSet token) {
+        return token == TokenSet.READ ||
+                token == TokenSet.WRITE ||
+                token == TokenSet.VAR ||
+                token == TokenSet.LET ||
+                token == TokenSet.DEF ||
+                token == TokenSet.IF ||
+                token == TokenSet.FOR ||
+                token == TokenSet.ID; // For function calls
     }
 
     // <PROGRAM> ::= <STMT_LIST> $$
@@ -114,8 +135,9 @@ class Parser {
     // <STMT_LIST> ::= <STMT> <STMT_LIST> | ε
     private void STMT_LIST(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<STMT_LIST>");
-        
-        // If the current token is a statement start, parse a statement and then parse the rest of the statement list
+
+        // If the current token is a statement start, parse a statement and then parse
+        // the rest of the statement list
         if (isStmtStart(lexer.getCurrentToken())) {
             STMT(thisNode);
             STMT_LIST(thisNode);
@@ -124,16 +146,8 @@ class Parser {
         }
     }
 
-    // Boolean function to check if the current token is a statement start
-    private boolean isStmtStart(TokenSet token) {
-        return lexer.getCurrentToken() == TokenSet.READ ||
-               lexer.getCurrentToken() == TokenSet.WRITE ||
-               lexer.getCurrentToken() == TokenSet.VAR ||
-               lexer.getCurrentToken() == TokenSet.LET ||
-               lexer.getCurrentToken() == TokenSet.FUN_CALL;
-    }
-
-    // <STMT> ::= <READ_STMT> | <WRITE_STMT> | <VAR_DECL> | <LET_STMT | FUN_CALL>
+    // <STMT> ::= <READ_STMT> | <WRITE_STMT> | <VAR_DECL> | <LET_STMT> | <FUNC_DEF>
+    // | <IF_STMT> | <FOR_LOOP>
     private void STMT(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<STMT>");
 
@@ -145,8 +159,37 @@ class Parser {
             VAR_DECL(thisNode);
         } else if (lexer.getCurrentToken() == TokenSet.LET) {
             LET_STMT(thisNode);
-        } else if (lexer.getCurrentToken() == TokenSet.FUN_CALL) {
-            FUN_CALL(thisNode);
+        } else if (lexer.getCurrentToken() == TokenSet.DEF) {
+            FUNC_DEF(thisNode);
+        } else if (lexer.getCurrentToken() == TokenSet.IF) {
+            IF_STMT(thisNode);
+        } else if (lexer.getCurrentToken() == TokenSet.FOR) {
+            FOR_LOOP(thisNode);
+        } else if (lexer.getCurrentToken() == TokenSet.ID) {
+            // Save the current lexeme and token
+            String currentLexeme = lexer.getCurrentLexeme();
+            TokenSet currentToken = lexer.getCurrentToken();
+
+            // Match the ID token
+            MATCH(thisNode, TokenSet.ID);
+
+            // Check the next token to determine if it's a function call or assignment
+            if (lexer.getCurrentToken() == TokenSet.OPEN_PAREN) {
+                // It's a function call
+                FUN_CALL(thisNode);
+            } else if (lexer.getCurrentToken() == TokenSet.EQUAL) {
+                // It's a variable assignment - create a new ASSIGNMENT node
+                final TreeNode assignNode = codeGenerator.addNonTerminal(thisNode, "<ASSIGNMENT>");
+                // Add the ID to the assignment node
+                codeGenerator.addTerminal(assignNode, TokenSet.ID, currentLexeme);
+                // Match the equal sign
+                MATCH(assignNode, TokenSet.EQUAL);
+                // Parse the expression
+                EXPRESSION(assignNode);
+            } else {
+                // Invalid statement
+                codeGenerator.syntaxError(thisNode, "Expected '(' for function call or '=' for assignment");
+            }
         }
     }
 
@@ -158,12 +201,12 @@ class Parser {
         MATCH(thisNode, TokenSet.ID);
     }
 
-    // <WRITE_STMT> ::= <WRITE> <ID>
+    // <WRITE_STMT> ::= <WRITE> <EXPRESSION>
     private void WRITE_STMT(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<WRITE_STMT>");
 
         MATCH(thisNode, TokenSet.WRITE);
-        MATCH(thisNode, TokenSet.ID);
+        EXPRESSION(thisNode);
     }
 
     // <LET_STMT> ::= <LET> <ID> <LET_TAIL>
@@ -171,23 +214,31 @@ class Parser {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<LET_STMT>");
 
         MATCH(thisNode, TokenSet.LET);
+        String varName = lexer.getCurrentLexeme();
         MATCH(thisNode, TokenSet.ID);
+        checkVariableDeclared(varName, thisNode);
         LET_TAIL(thisNode);
     }
 
-    // <VAR_DECL> ::= <VAR> <ID>
+    // <VAR_DECL> ::= <VAR> <ID> "=" <EXPRESSION>
     private void VAR_DECL(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<VAR_DECL>");
 
         MATCH(thisNode, TokenSet.VAR);
+        String varName = lexer.getCurrentLexeme();
         MATCH(thisNode, TokenSet.ID);
+        addVariableDeclaration(varName, thisNode);
+        MATCH(thisNode, TokenSet.EQUAL);
+        EXPRESSION(thisNode);
     }
 
-    // <FUN_CALL> ::= <ID>  '(' <ARG_LIST> ')'
+    // <FUN_CALL> ::= <ID> '(' <ARG_LIST> ')'
     private void FUN_CALL(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FUN_CALL>");
 
+        String funcName = lexer.getCurrentLexeme();
         MATCH(thisNode, TokenSet.ID);
+        checkFunctionDeclared(funcName, thisNode);
         MATCH(thisNode, TokenSet.OPEN_PAREN);
         ARG_LIST(thisNode);
         MATCH(thisNode, TokenSet.CLOSE_PAREN);
@@ -220,7 +271,8 @@ class Parser {
 
     // Boolean function to check if the current token is an expression start
     private boolean isExprStart(TokenSet token) {
-        return token == TokenSet.ADD_OP || token == TokenSet.ID || token == TokenSet.NUMBER || token == TokenSet.OPEN_PAREN;
+        return token == TokenSet.ADD_OP || token == TokenSet.ID || token == TokenSet.NUMBER
+                || token == TokenSet.OPEN_PAREN;
     }
 
     // <ARGS_TAIL> ::= <COMMA> <ARG_LIST> | ε
@@ -332,12 +384,15 @@ class Parser {
         }
     }
 
-    // <FUNC_DEF> ::= "DEF" <ID> "(" <PARAM_LIST> ")" "{" <STMT_LIST> "RETURN" <EXPRESSION> "}"
+    // <FUNC_DEF> ::= "DEF" <ID> "(" <PARAM_LIST> ")" "{" <STMT_LIST> "RETURN"
+    // <EXPRESSION> "}"
     private void FUNC_DEF(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FUNC_DEF>");
 
         MATCH(thisNode, TokenSet.DEF);
+        String funcName = lexer.getCurrentLexeme();
         MATCH(thisNode, TokenSet.ID);
+        addFunctionDeclaration(funcName, thisNode);
         MATCH(thisNode, TokenSet.OPEN_PAREN);
         PARAM_LIST(thisNode);
         MATCH(thisNode, TokenSet.CLOSE_PAREN);
@@ -373,7 +428,8 @@ class Parser {
         }
     }
 
-    // <FOR_LOOP> ::= "FOR" "(" <VAR_DECL> ";" <CONDITION> ";" <LET_STMT> ")" "{" <STMT_LIST> "}"
+    // <FOR_LOOP> ::= "FOR" "(" <VAR_DECL> ";" <CONDITION> ";" <ASSIGNMENT> ")" "{"
+    // <STMT_LIST> "}"
     private void FOR_LOOP(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<FOR_LOOP>");
 
@@ -383,14 +439,32 @@ class Parser {
         MATCH(thisNode, TokenSet.SEMICOLON);
         CONDITION(thisNode);
         MATCH(thisNode, TokenSet.SEMICOLON);
-        LET_STMT(thisNode);
+        ASSIGNMENT(thisNode);
         MATCH(thisNode, TokenSet.CLOSE_PAREN);
         MATCH(thisNode, TokenSet.OPEN_BRACE);
         STMT_LIST(thisNode);
         MATCH(thisNode, TokenSet.CLOSE_BRACE);
     }
 
-    // <SENTENCE> ::= <NOUN_PHRASE> <VERB_PHRASE> <NOUN_PHRASE> <PREP_PHRASE> <SENTENCE_TAIL>
+    // <ASSIGNMENT> ::= <ID> "=" <EXPRESSION>
+    private void ASSIGNMENT(final TreeNode parentNode) throws ParseException {
+        final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<ASSIGNMENT>");
+
+        // Get the variable name before matching the ID token
+        String varName = lexer.getCurrentLexeme();
+        MATCH(thisNode, TokenSet.ID);
+
+        // Check if the variable is declared
+        if (!declaredVariables.contains(varName)) {
+            codeGenerator.syntaxError(thisNode, "Variable '" + varName + "' used before declaration");
+        }
+
+        MATCH(thisNode, TokenSet.EQUAL);
+        EXPRESSION(thisNode);
+    }
+
+    // <SENTENCE> ::= <NOUN_PHRASE> <VERB_PHRASE> <NOUN_PHRASE> <PREP_PHRASE>
+    // <SENTENCE_TAIL>
     private void SENTENCE(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<SENTENCE>");
 
@@ -452,7 +526,8 @@ class Parser {
         }
     }
 
-    // <VERB_PHRASE> ::= <ADVERB> <VERB> <OPT_PREPOSITION> | <VERB> <OPT_PREPOSITION>
+    // <VERB_PHRASE> ::= <ADVERB> <VERB> <OPT_PREPOSITION> | <VERB>
+    // <OPT_PREPOSITION>
     private void VERB_PHRASE(final TreeNode parentNode) throws ParseException {
         final TreeNode thisNode = codeGenerator.addNonTerminal(parentNode, "<VERB_PHRASE>");
 
@@ -488,7 +563,8 @@ class Parser {
     /*
      * THIS CAN BE USED AS IS! Though you may modify it to suit your needs.
      *
-     * Add an EPSILON terminal node (result of an Epsilon Production) to the parse tree.
+     * Add an EPSILON terminal node (result of an Epsilon Production) to the parse
+     * tree.
      * Mainly, this is just done for better visualizing the complete parse tree.
      *
      * @param parentNode The parent of the terminal node.
@@ -504,7 +580,9 @@ class Parser {
      * If they match, add the token to the parse tree, otherwise throw an exception.
      *
      * @param currentNode The current terminal node.
+     * 
      * @param expectedToken The token to be matched.
+     * 
      * @throws ParseException Thrown if the token does not match the expected token.
      */
     private void MATCH(final TreeNode currentNode, final TokenSet expectedToken) throws ParseException {
@@ -524,10 +602,10 @@ class Parser {
         }
     }
 
-
-// ////////////////////////////////////////////////////////////////////////////////////////////////
-// !!!!!!!!!!!!!!!!!!! CODE MODIFICATIONS SHOULD BE MADE ABOVE THIS LINE !!!!!!!!!!!!!!!!!!!!!!!!!
-// ////////////////////////////////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////////////////////////////////
+    // !!!!!!!!!!!!!!!!!!! CODE MODIFICATIONS SHOULD BE MADE ABOVE THIS LINE
+    // !!!!!!!!!!!!!!!!!!!!!!!!!
+    // ////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * THIS IS INVOKED DIRECTLY FROM MAIN AND SHOULD NOT BE MODIFIED.
@@ -539,10 +617,10 @@ class Parser {
         this.lexer = lexer;
         this.codeGenerator = codeGenerator;
 
-        // !!!! Change this to automatically prompt to see the Open WebGraphViz dialog or not. !!!!
+        // !!!! Change this to automatically prompt to see the Open WebGraphViz dialog
+        // or not. !!!!
         MAIN.PROMPT_FOR_GRAPHVIZ = true;
     }
-
 
     /**
      * THIS IS INVOKED DIRECTLY FROM MAIN AND SHOULD NOT BE MODIFIED.
@@ -562,6 +640,39 @@ class Parser {
         }
     }
 
+    // Helper method to check if a variable is declared
+    private void checkVariableDeclared(String varName, TreeNode parentNode) throws ParseException {
+        if (!declaredVariables.contains(varName)) {
+            codeGenerator.syntaxError(parentNode,
+                    String.format("Variable '%s' used before declaration", varName));
+        }
+    }
+
+    // Helper method to check if a function is declared
+    private void checkFunctionDeclared(String funcName, TreeNode parentNode) throws ParseException {
+        if (!declaredFunctions.contains(funcName)) {
+            codeGenerator.syntaxError(parentNode,
+                    String.format("Function '%s' used before declaration", funcName));
+        }
+    }
+
+    // Helper method to add a variable declaration
+    private void addVariableDeclaration(String varName, TreeNode parentNode) throws ParseException {
+        if (declaredVariables.contains(varName)) {
+            codeGenerator.syntaxError(parentNode,
+                    String.format("Variable '%s' already declared", varName));
+        }
+        declaredVariables.add(varName);
+    }
+
+    // Helper method to add a function declaration
+    private void addFunctionDeclaration(String funcName, TreeNode parentNode) throws ParseException {
+        if (declaredFunctions.contains(funcName)) {
+            codeGenerator.syntaxError(parentNode,
+                    String.format("Function '%s' already declared", funcName));
+        }
+        declaredFunctions.add(funcName);
+    }
 
     // The lexer, which will provide the tokens
     private final LexicalAnalyzer lexer;

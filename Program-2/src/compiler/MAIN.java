@@ -54,7 +54,6 @@ public class MAIN {
         // Private constructor
     }
 
-
     /**
      * The main entry point for the program.
      *
@@ -71,8 +70,10 @@ public class MAIN {
         final Optional<File> optInputFile = getInputFilePath(args);
 
         // Bailout if no file was chosen.
-        if (optInputFile.isEmpty()) return;
-        else inputFile = optInputFile.get();
+        if (optInputFile.isEmpty())
+            return;
+        else
+            inputFile = optInputFile.get();
 
         // Try to compile the input file.
         try {
@@ -80,7 +81,8 @@ public class MAIN {
             final String compiledCode = scanAndParse(inputFile);
 
             // Write the output to a file.
-            if (WRITE_TO_DOT_FILE) writeToDotFile(inputFile, compiledCode);
+            if (WRITE_TO_DOT_FILE)
+                writeToDotFile(inputFile, compiledCode);
 
             // Display the graphviz test page, if desired.
             if (PROMPT_FOR_GRAPHVIZ) {
@@ -102,8 +104,8 @@ public class MAIN {
         if (Desktop.isDesktopSupported()) {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
-                     UnsupportedLookAndFeelException e) {
+            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+                    | UnsupportedLookAndFeelException e) {
                 System.err.println("Could not set the Look and Feel to the system default.");
             }
         } else {
@@ -167,7 +169,8 @@ public class MAIN {
         final Parser parser = new Parser(lexicalAnalyzer, codeGenerator);
 
         // Generate a header for the output.
-        if (!WRITE_TO_DOT_FILE) out.println("\n// START: Graphviz Parse Tree Output");
+        if (!WRITE_TO_DOT_FILE)
+            out.println("\n// START: Graphviz Parse Tree Output");
         TreeNode startNode = codeGenerator.writeHeader();
 
         // Analyze the input and generate the parse tree.
@@ -175,7 +178,8 @@ public class MAIN {
 
         // generate footer for our output
         codeGenerator.writeFooter();
-        if (!WRITE_TO_DOT_FILE) out.println("// END: Graphviz Parse Tree Output\n");
+        if (!WRITE_TO_DOT_FILE)
+            out.println("// END: Graphviz Parse Tree Output\n");
 
         // Return the compiled code.
         return codeGenerator.getGeneratedCodeBuffer();
@@ -189,7 +193,8 @@ public class MAIN {
      * @throws IOException Throws an IOException if the file cannot be written.
      */
     private static void writeToDotFile(File inputFile, String compiledCode) throws IOException {
-        // Get the canonical path of the input file and change the extension to .gv (or .dot)
+        // Get the canonical path of the input file and change the extension to .gv (or
+        // .dot)
         String canonicalPath = inputFile.getCanonicalPath().replaceFirst("[.][^.]+$", DOTFILE_EXT);
 
         try (var outputFile = new FileWriter(canonicalPath)) {
@@ -248,17 +253,17 @@ class LexicalAnalyzer {
             // Comparison operators
             ">=|<=|=>|=<|<>|==|!=" +
             // Bitwise and shift operators
-            "|>>|<<|\\|=|&=|\\^=" +
-            // Assignment operators
-            "|:=|\\+=|-=|\\*=|/=|%=|&&|\\|\\|" +
-            // Increment/Decrement operators
-            "|\\+\\+|--" +
-            // Arrow operators
-            "|<-|->";
+                    "|>>|<<|\\|=|&=|\\^=" +
+                    // Assignment operators
+                    "|:=|\\+=|-=|\\*=|/=|%=|&&|\\|\\|" +
+                    // Increment/Decrement operators
+                    "|\\+\\+|--" +
+                    // Arrow operators
+                    "|<-|->";
 
     // TokenSet Regex for words, numbers, and symbols.
-    private final static String regex =
-            String.join("|", NUMBER_REGEX, ID_REGEX, MULTICHAR_OPERATOR_REGEX, SINGLE_CHAR_OPERATOR_REGEX);
+    private final static String regex = String.join("|", NUMBER_REGEX, ID_REGEX, MULTICHAR_OPERATOR_REGEX,
+            SINGLE_CHAR_OPERATOR_REGEX);
 
     // The Compiled pattern.
     private final Pattern pattern;
@@ -285,9 +290,9 @@ class LexicalAnalyzer {
         // Read the file and tokenize the input.
         try (var lines = lines(filePath)) {
             this.tokenize(lines // read lines
-                                .map(String::trim) // map to stripped strings
-                                .filter(x -> !x.startsWith("#")) // filter out lines starting with #
-                                .collect(Collectors.joining(" "))); // join lines together with spaces between.
+                    .map(String::trim) // map to stripped strings
+                    .filter(x -> !x.startsWith("#")) // filter out lines starting with #
+                    .collect(Collectors.joining(" "))); // join lines together with spaces between.
         }
     }
 
@@ -311,7 +316,8 @@ class LexicalAnalyzer {
             TokenString tokenLexemePair = new TokenString(lexeme, token);
 
             // Debugging output only
-            if (MAIN.DEBUG_LEXER) out.println("READING: " + tokenLexemePair);
+            if (MAIN.DEBUG_LEXER)
+                out.println("READING: " + tokenLexemePair);
 
             // Add the token to the list.
             this.tokenList.add(tokenLexemePair);
@@ -325,8 +331,8 @@ class LexicalAnalyzer {
      */
     public String getCurrentLexeme() {
         return (this.tokenList.isEmpty() || getCurrentToken() == TokenSet.$$)
-               ? "$$ (End of Input)"
-               : Objects.requireNonNull(this.tokenList.peek()).lexeme;
+                ? "$$ (End of Input)"
+                : Objects.requireNonNull(this.tokenList.peek()).lexeme;
     }
 
     /**
@@ -368,19 +374,26 @@ class LexicalAnalyzer {
 // *********************************************************************************************************
 
 /**
- * This is a ***SIMULATION*** of a "code generator" that simply generates GraphViz output.
+ * This is a ***SIMULATION*** of a "code generator" that simply generates
+ * GraphViz output.
  * Technically, this would represent the "Intermediate Code Generation" step.
  * <p>
- * Also, Instead of building an entire tree in memory followed by a traversal tree at the end,
+ * Also, Instead of building an entire tree in memory followed by a traversal
+ * tree at the end,
  * here we are just adding “code” as we go.
  * <p>
- * (This simulates a single-pass compiler; keep in mind that most modern compilers work in several
- * passes… eg. Scan for all top level identifiers, build subtrees for each class/method/etc.,
+ * (This simulates a single-pass compiler; keep in mind that most modern
+ * compilers work in several
+ * passes… eg. Scan for all top level identifiers, build subtrees for each
+ * class/method/etc.,
  * generate an internal intermediate code representation, and so on).
  * <p>
- * DESIGN NOTE: From an OOP design perspective, creating instances of "utility classes" (classes
- * with no internal state) is generally bad. However, in a more elaborate example, the code
- * generator would most certainly maintain some internal state information. (Memory address offsets, etc.)
+ * DESIGN NOTE: From an OOP design perspective, creating instances of "utility
+ * classes" (classes
+ * with no internal state) is generally bad. However, in a more elaborate
+ * example, the code
+ * generator would most certainly maintain some internal state information.
+ * (Memory address offsets, etc.)
  */
 class CodeGenerator {
     private static final String GRAPHVIZ_ROOT_STYLE = "shape=plain";
@@ -389,7 +402,6 @@ class CodeGenerator {
     private static final String GRAPHVIZ_EPSILON_STYLE = "shape=plain";
     private static final String GRAPHVIZ_SYNTAX_ERROR = "shape=plain,fontcolor=red";
     private static final Integer RANK_SEP = 1;
-
 
     // Buffer for generated code
     private final StringBuffer codeBuffer;
@@ -412,15 +424,13 @@ class CodeGenerator {
                 digraph ParseTree {
                 graph[ranksep=%d];
                 node[%s];
-                
+
                 %s[label="%s",%s];%n""".formatted(
                 RANK_SEP,
                 GRAPHVIZ_NON_TERMINAL_STYLE,
                 headerNode.id(),
                 headerNode.name(),
-                GRAPHVIZ_ROOT_STYLE
-        );
-
+                GRAPHVIZ_ROOT_STYLE);
 
         this.outputGeneratedCode(sb);
         return headerNode;
@@ -433,7 +443,8 @@ class CodeGenerator {
 
     // Write generated code to both the screen AND the buffer.
     private void outputGeneratedCode(final String outputAsSting) {
-        if (!MAIN.WRITE_TO_DOT_FILE) out.print(outputAsSting);
+        if (!MAIN.WRITE_TO_DOT_FILE)
+            out.print(outputAsSting);
         this.codeBuffer.append(outputAsSting);
     }
 
@@ -481,17 +492,16 @@ class CodeGenerator {
      * Show the non-terminals as boxes…
      *
      * @param parentNode the parent node
-     * @param childNode     the child node
+     * @param childNode  the child node
      * @return the child node
      */
     private TreeNode addNonTerminal(final TreeNode parentNode, final TreeNode childNode) {
         final var msg = "%s->{%s[label=\"%s\"]};%n"
-                                .formatted(parentNode.id(), childNode.id(), childNode.name());
+                .formatted(parentNode.id(), childNode.id(), childNode.name());
 
         this.outputGeneratedCode(msg);
         return childNode;
     }
-
 
     /**
      * Add an EMPTY terminal node (result of an Epsilon Production) to the parse
@@ -526,7 +536,8 @@ class CodeGenerator {
     /**
      * Write the footer for the "compiled" output.
      * "Real" executable code generally has a footer.
-     * See: <a href="https://en.wikipedia.org/wiki/Executable_and_Linkable_Format">...</a>
+     * See: <a href=
+     * "https://en.wikipedia.org/wiki/Executable_and_Linkable_Format">...</a>
      */
     void writeFooter() {
         this.outputGeneratedCode("}");
@@ -584,15 +595,17 @@ class TreeNode {
  * Code to invoke the online graph viewer.
  */
 class GraphViewer {
-    /* NOTE: Online/Web versions of Graphviz
+    /*
+     * NOTE: Online/Web versions of Graphviz
      * http://www.webgraphviz.com
      * http://viz-js.com
      * https://dreampuf.github.io/GraphvizOnline
      * https://edotor.net
      */
 
-    static final String[] uri_fields = {"https", "edotor.net", "/"};
-    //static String[] uri_fields = {"https", "dreampuf.github.io", "/GraphvizOnline/"};
+    static final String[] uri_fields = { "https", "edotor.net", "/" };
+    // static String[] uri_fields = {"https", "dreampuf.github.io",
+    // "/GraphvizOnline/"};
 
     static final String protocol = uri_fields[0];
     static final String host = uri_fields[1];
@@ -603,14 +616,17 @@ class GraphViewer {
             [%s] or any local or online Graphviz rendering tool.
             """.formatted(protocol + "://" + host + path);
 
-
     /**
-     * Displays a tree viewer using the provided DOT source string and optionally prompts the user
+     * Displays a tree viewer using the provided DOT source string and optionally
+     * prompts the user
      * to open a web-based Graphviz instance.
      *
-     * @param dotSrc            The DOT source string representing the tree structure to be visualized.
-     * @param promptForGraphviz A boolean flag indicating whether to prompt the user to open
-     *                          a web-based Graphviz visualization. If true, a dialog may be presented to the user.
+     * @param dotSrc            The DOT source string representing the tree
+     *                          structure to be visualized.
+     * @param promptForGraphviz A boolean flag indicating whether to prompt the user
+     *                          to open
+     *                          a web-based Graphviz visualization. If true, a
+     *                          dialog may be presented to the user.
      */
     void displayTreeViewer(final String dotSrc, boolean promptForGraphviz) {
 
@@ -641,13 +657,15 @@ class GraphViewer {
 
     }
 
-
     /**
-     * Launches the web-based Graphviz interface in the default browser using the specified URI.
-     * If the functionality is supported and enabled, a dialog prompts the user for confirmation
+     * Launches the web-based Graphviz interface in the default browser using the
+     * specified URI.
+     * If the functionality is supported and enabled, a dialog prompts the user for
+     * confirmation
      * before proceeding to open the URI in a browser.
      *
-     * @param uri The URI to be opened in the browser, representing the web-based Graphviz interface.
+     * @param uri The URI to be opened in the browser, representing the web-based
+     *            Graphviz interface.
      */
     private void launchWebGraphviz(URI uri) {
         // Assume the launch is successful

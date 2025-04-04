@@ -11,20 +11,26 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Remember this is part of a "fake" tokenizer, that when handed a string, it simply resolves to a
- * TOKEN object matching that string. All the Tokens/Terminals Used by the parser. The purpose of
+ * Remember this is part of a "fake" tokenizer, that when handed a string, it
+ * simply resolves to a
+ * TOKEN object matching that string. All the Tokens/Terminals Used by the
+ * parser. The purpose of
  * the enum type here is to eliminate the need for direct character comparisons.
  * <p>
- * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMPORTANT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<br>
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IMPORTANT
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<br>
  * -----------------------------------------------------------------------------<br>
  * IN *MOST* REAL CASES, THERE WILL BE ONLY ONE LEXEME PER compiler TokenSet!
  * <p>
- * The fact that several lexemes exist per token in this example is because this is to parse simple
- * In English sentences, most of the token types have many words (lexemes) that could fit.
+ * The fact that several lexemes exist per token in this example is because this
+ * is to parse simple
+ * In English sentences, most of the token types have many words (lexemes) that
+ * could fit.
  * *** This is generally NOT the case in most programming languages!!! ***
  */
 
 public enum TokenSet {
+    // Sentence-related tokens
     ARTICLE("a", "the"),
     NOUN("dog", "cat", "rat", "tree", "fox"),
     VERB("jumps", "chases"),
@@ -32,46 +38,46 @@ public enum TokenSet {
     LIST_SEPARATOR(","),
     ADVERB("quickly", "slowly"),
     PREPOSITION("around", "up", "over"),
-    IF("if"),
-    ELSE("else"),
-    DEF("def"),
-    RETURN("return"),
-    FOR("for"),
+    CONJUNCTION("and", "or"),
+    PERIOD("."),
+    EXCLAMATION("!"),
+
+    // Programming language tokens
     READ("read"),
     WRITE("write"),
     VAR("var"),
     LET("let"),
-    FUN_CALL("call"),
+    DEF("def"),
+    RETURN("return"),
+    IF("if"),
+    ELSE("else"),
+    FOR("for"),
     ID("id"),
 
-    OPEN_PAREN("("),
-    CLOSE_PAREN(")"),
-    OPEN_BRACE("{"),
-    CLOSE_BRACE("}"),
-    ARROW("<-"),
+    // Operators
     ADD_OP("+", "-"),
     MULT_OP("*", "/"),
     REL_OP("<", ">", "<=", ">=", "=="),
     EQUAL("="),
-    PERIOD("."),
+    ARROW("<-"),
+
+    // Punctuation
+    OPEN_PAREN("("),
+    CLOSE_PAREN(")"),
+    OPEN_BRACE("{"),
+    CLOSE_BRACE("}"),
     COMMA(","),
     SEMICOLON(";"),
-    EXCLAMATION("!"),
-    CONJUNCTION("and", "or"),
+
+    // Special tokens
+    NUMBER,
     $$, // End of file
-
-    // THESE ARE NOT USED IN THE GRAMMAR, BUT MIGHT BE USEFUL...  :)
-    UNIDENTIFIED_TOKEN, // Would probably be an "ID" in a "real programming language" (HINT!!!)
-    NUMBER; // A sequence of digits.
-
-
+    UNIDENTIFIED_TOKEN; // For unknown identifiers
 
     /**
      * A list of all lexemes for each token.
      */
     private final List<String> lexemeList;
-
-    
 
     /**
      * Constructor for the TokenSet enum.
@@ -83,17 +89,16 @@ public enum TokenSet {
     TokenSet(final String... tokenStrings) {
         // lowercase all lexemes and collect them into an Arraylist.
         this.lexemeList = Arrays
-            .stream(tokenStrings)
-            .map(String::toLowerCase)
-            .toList();
+                .stream(tokenStrings)
+                .map(String::toLowerCase)
+                .toList();
     }
-
-
 
     /*
      * Get a TokenSet object from the Lexeme string.
      *
      * @param string The String (lexeme) to convert to a compiler.TokenSet
+     * 
      * @return A compiler.TokenSet object based on the input String (lexeme)
      */
     static TokenSet getTokenFromLexeme(final String string) {
@@ -106,15 +111,7 @@ public enum TokenSet {
             return $$;
         }
 
-        // Regex for one or more digits optionally followed by and more digits.
-        // (doesn't handle "-", "+" etc., only digits)
-        // Return the NUMBER token if the string represents a number.
-        if (lexeme.matches(LexicalAnalyzer.NUMBER_REGEX)) {
-            return NUMBER;
-        }
-
-        // Search through ALL lexemes looking for a match with early bailout.
-        // Return the matching token if found.
+        // First check for specific tokens (keywords, operators, etc.)
         for (var token : TokenSet.values()) {
             if (token.lexemeList.contains(lexeme)) {
                 // early bailout from the method within the loop.
@@ -122,7 +119,16 @@ public enum TokenSet {
             }
         }
 
-        // NOTE: UNIDENTIFIED_TOKEN could represent an ID, for example.
+        // Then check for numbers
+        if (lexeme.matches(LexicalAnalyzer.NUMBER_REGEX)) {
+            return NUMBER;
+        }
+
+        // Finally check for generic identifiers
+        if (lexeme.matches("[a-zA-Z][a-zA-Z0-9_]*")) {
+            return ID;
+        }
+
         // Return "UNIDENTIFIED_TOKEN" if no match was found.
         return UNIDENTIFIED_TOKEN;
     }
