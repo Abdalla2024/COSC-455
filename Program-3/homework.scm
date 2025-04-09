@@ -26,7 +26,23 @@
 
       (helper start 0)))
 
+; Function to count how many numbers in list divisible by 3
+(define (count-div-by-three list div)
+
+  ; Helper to loop through list
+  (define (helper list count)
+    (cond
+      ((null? list) count) ; Empty list, return count
+      ((= (modulo (car list) div) 0) ; If first element % div == 0
+       (helper (cdr list) (+ count 1))) ; Increment count
+      (else (helper (cdr list) count)))) ; Else continue
+
+  (helper list 0))
+
 (write (count-div 1 12 4))
+(newline)
+
+(write (count-predicate 1 12 (lambda (a) (= (modulo a 3) 0))))
 (newline)
 
 (write (count-predicate 1 12 (lambda (a) (= (modulo a 3) 0))))
