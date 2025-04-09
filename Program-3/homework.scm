@@ -39,6 +39,15 @@
 
   (helper list 0))
 
+; Rewriting above function to accept predicate function
+(define ( count-pred list pred)
+  (cond
+    ((null? list) 0) ; Empty list, return count
+    ((pred (car list)) ; If first element satisfies predicate
+     (+ 1 (count-pred (cdr list) pred))) ; Add 1
+    (else
+     (count-pred (cdr list) pred)))) ; Else continue
+
 (write (count-div 1 12 4))
 (newline)
 
@@ -46,4 +55,8 @@
 (newline)
 
 (write (count-predicate 1 12 (lambda (a) (= (modulo a 3) 0))))
+(newline)
+
+(write (count-pred '(1 2 3 4 5 6 7 8 9 10 11 12) 
+                        (lambda (a) (= (modulo a 3) 0))))
 (newline)
